@@ -1,0 +1,20 @@
+# Editor configs
+.vscode/
+
+# Python ignore files
+**/__pycache__/
+/.pycache_check/
+
+# Datasets
+/data/
+
+# Intermediate files
+/temp
+/temp_code/
+/temp_config/
+/workspaces
+/cache
+/analysis
+/artifacts/frozen_reference_cache
+*.ckpt
+*.pt
