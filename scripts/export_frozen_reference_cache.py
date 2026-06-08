@@ -34,10 +34,10 @@ def parse_args():
 
 
 def tensor_to_original_scale(data_bundle, value):
-    tensor = value.detach().cpu().float()
+    tensor = value.detach().float()
     if data_bundle.label_transformation is not None:
         tensor = data_bundle.label_transformation.inverse_transform(tensor)
-    return tensor
+    return tensor.detach().cpu()
 
 
 def resolve_processed_path(source_path, processed_root):
