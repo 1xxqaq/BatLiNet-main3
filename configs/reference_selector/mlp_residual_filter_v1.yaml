@@ -1,0 +1,29 @@
+experiment_name: mlp_residual_filter_v1
+backbone_name: batlinet_original_mix20_trainS2_testS32
+
+cache_root: artifacts/frozen_reference_cache/batlinet_original_mix20_trainS2_testS32
+train_subdir: train_random32
+test_subdir: protocol_v1
+output_dir: analysis/reference_selector/batlinet_original_mix20_trainS2_testS32/mlp_residual_filter_v1
+
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]
+device: cpu
+
+model:
+  hidden_dims: [128, 64]
+  dropout: 0.1
+
+training:
+  batch_size: 512
+  epochs: 300
+  lr: 0.001
+  weight_decay: 0.0001
+  val_fraction: 0.2
+  patience: 40
+  random_seed: 20260609
+  target_transform: log1p
+
+strategies:
+  filter_keep_ratios: [0.5]
+  topk: [3, 5, 8, 16]
+  softmax_temperatures: [0.5, 1.0]
