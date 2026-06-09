@@ -59,6 +59,11 @@ def parse_seed_override(value):
     return [int(item.strip()) for item in value.split(",") if item.strip()]
 
 
+def normalize_numpy_seed(seed):
+    # NumPy requires seeds in [0, 2**32 - 1). Keep generated cache seeds valid.
+    return int(seed) % (2 ** 32 - 1)
+
+
 def find_checkpoint(checkpoint_dir, seed):
     checkpoint_dir = Path(checkpoint_dir)
     matches = sorted(checkpoint_dir.glob(f"*_seed_{seed}_epoch_*.ckpt"))
@@ -111,7 +116,7 @@ def prepare_seed_context(cfg, seed, checkpoint, device):
 
 
 def export_repeat_cache(ctx, cfg, seed, repeat_idx, output, cache_random_seed):
-    set_seed(cache_random_seed)
+    set_seed(normalize_numpy_seed(cache_random_seed))
     dataset = ctx.dataset
     model = ctx.model
     loader = ctx.loader
@@ -266,6 +271,7 @@ def main():
         for repeat_idx in range(repeat_start, repeat_start + num_repeats):
             output = output_root / f"repeat_{repeat_idx:03d}" / f"train_seed_{seed}.pt"
             cache_random_seed = random_seed_base + seed * 100000 + repeat_idx
+            cache_random_seed = normalize_numpy_seed(cache_random_seed)
             status = "planned"
             if output.exists() and skip_existing:
                 status = "exists"

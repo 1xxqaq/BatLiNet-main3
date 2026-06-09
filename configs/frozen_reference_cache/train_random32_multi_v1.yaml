@@ -10,7 +10,7 @@ support_size: 32
 seeds: [0, 1, 2, 3, 4, 5, 6, 7]
 repeat_start: 0
 num_repeats: 128
-cache_random_seed_base: 202606100000
+cache_random_seed_base: 2026061000
 
 device: cpu
 batch_size: null
