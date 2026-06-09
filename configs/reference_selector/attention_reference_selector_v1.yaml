@@ -1,0 +1,37 @@
+experiment_name: attention_reference_selector_v1
+backbone_name: batlinet_original_mix20_trainS2_testS32
+
+cache_root: artifacts/frozen_reference_cache/batlinet_original_mix20_trainS2_testS32
+train_subdir: train_random32
+test_subdir: protocol_v1
+output_dir: analysis/reference_selector/batlinet_original_mix20_trainS2_testS32/attention_reference_selector_v1
+
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]
+device: cpu
+
+model:
+  hidden_dim: 128
+  num_layers: 2
+  num_heads: 4
+  ff_dim: 256
+  dropout: 0.1
+
+training:
+  batch_size: 32
+  epochs: 300
+  lr: 0.001
+  weight_decay: 0.0001
+  val_fraction: 0.2
+  patience: 40
+  random_seed: 20260609
+  target_transform: log1p
+  teacher_temperature: 0.5
+  score_temperature: 1.0
+  rank_loss_weight: 1.0
+  residual_loss_weight: 0.3
+  grad_clip_norm: 5.0
+
+strategies:
+  filter_keep_ratios: [0.5]
+  topk: [3, 5, 8, 16]
+  softmax_temperatures: [0.5, 1.0]
