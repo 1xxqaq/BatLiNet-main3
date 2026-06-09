@@ -27,6 +27,15 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split", choices=["train", "test"], default="test")
     parser.add_argument("--support-size", type=int, default=32)
+    parser.add_argument(
+        "--cache-random-seed",
+        type=int,
+        default=None,
+        help=(
+            "Optional random seed used only for random support sampling. "
+            "This lets one checkpoint export multiple train caches."
+        ),
+    )
     parser.add_argument("--fixed-support-index-path", default=None)
     parser.add_argument("--processed-data-root", default=None)
     parser.add_argument("--batch-size", type=int, default=None)
@@ -119,6 +128,8 @@ def build_cache(args):
     if fixed_indices is not None and fixed_indices.size(0) != len(target_data):
         raise ValueError(
             "Fixed support protocol does not match the selected split length.")
+    if args.cache_random_seed is not None:
+        set_seed(args.cache_random_seed)
 
     processed_root = (
         Path(args.processed_data_root)
@@ -211,6 +222,7 @@ def build_cache(args):
         "checkpoint": args.checkpoint,
         "alpha": model.alpha,
         "support_size": args.support_size,
+        "cache_random_seed": args.cache_random_seed,
         "fixed_support_index_path": args.fixed_support_index_path,
         "label_space": "transformed_and_original",
         "tensors": {
