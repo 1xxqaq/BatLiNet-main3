@@ -8,9 +8,11 @@ from .elastic_net import ElasticNetRULPredictor
 from .random_forest import RandomForestRULPredictor
 from .linear_regression import LinearRegressionRULPredictor
 from .batlinet import BatLiNetRULPredictor
+from .representation_diff_batlinet import RepresentationDiffBatLiNetRULPredictor
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor
 from .cell_diff_cnn import CellDifferenceCNNRULPredictor
 from .cycle_diff_cnn import CycleDifferenceCNNRULPredictor
 from .naive_diff_cnn import NaiveDifferenceCNNRULPredictor
+
