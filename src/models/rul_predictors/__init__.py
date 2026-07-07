@@ -8,7 +8,10 @@ from .elastic_net import ElasticNetRULPredictor
 from .random_forest import RandomForestRULPredictor
 from .linear_regression import LinearRegressionRULPredictor
 from .batlinet import BatLiNetRULPredictor
-from .representation_diff_batlinet import RepresentationDiffBatLiNetRULPredictor
+from .representation_diff_batlinet import (
+    RepresentationDiffBatLiNetRULPredictor,
+    RepresentationRelationMLPBatLiNetRULPredictor,
+)
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor

@@ -334,3 +334,61 @@ class RepresentationDiffBatLiNetRULPredictor(NNModel):
 
 
 
+
+
+@MODELS.register()
+class RepresentationRelationMLPBatLiNetRULPredictor(
+        RepresentationDiffBatLiNetRULPredictor):
+    """Latent relation BatLiNet variant with a stronger target-support head."""
+
+    def __init__(self,
+                 *args,
+                 relation_hidden_multiplier: int = 2,
+                 relation_dropout: float = 0.0,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        hidden_channels = self.channels * relation_hidden_multiplier
+        relation_channels = self.channels * 5
+        self.relation_head = nn.Sequential(
+            nn.Linear(relation_channels, hidden_channels),
+            nn.LayerNorm(hidden_channels),
+            nn.GELU(),
+            nn.Dropout(relation_dropout),
+            nn.Linear(hidden_channels, self.channels),
+            nn.GELU(),
+            nn.Linear(self.channels, 1, bias=False),
+        )
+        del self.fc_sup
+
+    def compute_prediction_components(self,
+                                      feature: torch.Tensor,
+                                      support_feature: torch.Tensor,
+                                      support_label: torch.Tensor,
+                                      return_features: bool = False):
+        B, S, C, H, W = support_feature.size()
+
+        z_ori = self.cell_encoder(feature).view(B, self.channels)
+        z_sup = self.cell_encoder(
+            support_feature.view(-1, C, H, W)).view(B, S, self.channels)
+        z_ori_expanded = z_ori.unsqueeze(1).expand(-1, S, -1)
+        z_diff = z_ori_expanded - z_sup
+        relation = torch.cat([
+            z_ori_expanded,
+            z_sup,
+            z_diff,
+            z_diff.abs(),
+            z_ori_expanded * z_sup,
+        ], dim=-1)
+
+        y_ori = self.fc_ori(z_ori).view(-1)
+        y_sup = self.relation_head(relation).view(B, S)
+        y_sup += support_label.view(B, S)
+
+        if self.training:
+            y_sup_agg = y_sup.mean(1).view(-1)
+        else:
+            y_sup_agg = y_sup.median(1)[0].view(-1)
+
+        if return_features:
+            return y_ori, y_sup, y_sup_agg, None, None, z_ori, z_sup
+        return y_ori, y_sup, y_sup_agg, None, None
