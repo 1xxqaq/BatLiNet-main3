@@ -10,7 +10,7 @@ from torch.utils.data.dataloader import DataLoader
 from src.builders import MODELS
 from src.data.databundle import DataBundle, Dataset
 
-from .batlinet import build_module, mse, remove_glitches, smoothing
+from .batlinet import DiffDataset, build_module, mse, remove_glitches, smoothing
 from ..nn_model import NNModel
 
 
@@ -239,7 +239,8 @@ class RepresentationDiffBatLiNetRULPredictor(NNModel):
 
     @torch.no_grad()
     def build_cycle_diff_dataset(self, dataset: Dataset):
-        return self.build_cell_dataset(dataset)
+        feature = self._prepare_feature(dataset.feature)
+        return DiffDataset(feature, feature, dataset.label)
 
     @torch.no_grad()
     def get_support_set(self,
@@ -330,5 +331,6 @@ class RepresentationDiffBatLiNetRULPredictor(NNModel):
 
         feature[mask] = 0.
         return feature
+
 
 
