@@ -15,6 +15,9 @@ from .representation_diff_batlinet import (
 from .relative_degradation_diff_batlinet import (
     RelativeDegradationDiffBatLiNetRULPredictor,
 )
+from .elastic_aligned_diff_batlinet import (
+    ElasticAlignedDiffBatLiNetRULPredictor,
+)
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor
