@@ -117,6 +117,56 @@ class TokenRegressionHead(nn.Module):
         return self.net(pooled).squeeze(-1)
 
 
+class RelationTokenFusionHead(nn.Module):
+    """Fuse explicit latent relation tokens before support delta regression."""
+
+    def __init__(self,
+                 channels: int,
+                 hidden_channels: int,
+                 relation_parts: int = 5,
+                 mlp_ratio: int = 2,
+                 dropout: float = 0.1):
+        super().__init__()
+        self.fusion = nn.Sequential(
+            nn.Linear(channels * relation_parts, channels),
+            nn.LayerNorm(channels),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(channels, channels),
+            nn.GELU(),
+        )
+        self.context_mlp = nn.Sequential(
+            nn.LayerNorm(channels),
+            nn.Linear(channels, channels * mlp_ratio),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(channels * mlp_ratio, channels),
+            nn.Dropout(dropout),
+        )
+        self.regressor = TokenRegressionHead(
+            channels,
+            hidden_channels,
+            dropout=dropout,
+        )
+
+    def forward(self,
+                target_tokens: torch.Tensor,
+                support_tokens: torch.Tensor,
+                relation_tokens: torch.Tensor) -> torch.Tensor:
+        relation_delta = relation_tokens - target_tokens
+        relation_product = target_tokens * relation_tokens
+        fused_tokens = torch.cat([
+            target_tokens,
+            support_tokens,
+            relation_tokens,
+            relation_delta,
+            relation_product,
+        ], dim=-1)
+        fused_tokens = self.fusion(fused_tokens)
+        fused_tokens = fused_tokens + self.context_mlp(fused_tokens)
+        return self.regressor(fused_tokens)
+
+
 @MODELS.register()
 class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
     """BatLiNet variant with pure latent target-support cross-attention."""
@@ -475,3 +525,67 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
 
         feature[mask] = 0.
         return feature
+
+@MODELS.register()
+class LatentCrossAttentionRelationTokensBatLiNetRULPredictor(
+        LatentCrossAttentionBatLiNetRULPredictor):
+    """Latent cross-attention with explicit token-level relation features."""
+
+    def __init__(self,
+                 *args,
+                 relation_mlp_ratio: int = 2,
+                 **kwargs):
+        super().__init__(*args, **kwargs)
+        self.support_head = RelationTokenFusionHead(
+            self.channels,
+            kwargs.get('head_hidden_channels') or self.channels,
+            relation_parts=5,
+            mlp_ratio=relation_mlp_ratio,
+            dropout=kwargs.get('attention_dropout', 0.1),
+        )
+
+    def compute_prediction_components(self,
+                                      feature: torch.Tensor,
+                                      support_feature: torch.Tensor,
+                                      support_label: torch.Tensor,
+                                      return_features: bool = False):
+        B, S, C, H, W = support_feature.size()
+
+        target_tokens = self.cell_encoder(feature)
+        support_tokens = self.cell_encoder(
+            support_feature.view(-1, C, H, W))
+
+        T = target_tokens.size(1)
+        target_pair_tokens = (
+            target_tokens.unsqueeze(1)
+            .expand(-1, S, -1, -1)
+            .reshape(B * S, T, self.channels)
+        )
+        relation_tokens = target_pair_tokens
+        for block in self.cross_attention:
+            relation_tokens = block(relation_tokens, support_tokens)
+
+        y_ori = self.ori_head(target_tokens).view(-1)
+        y_sup = self.support_head(
+            target_pair_tokens,
+            support_tokens,
+            relation_tokens,
+        ).view(B, S)
+        y_sup = y_sup + support_label.view(B, S)
+
+        if self.training:
+            y_sup_agg = y_sup.mean(1).view(-1)
+        else:
+            y_sup_agg = y_sup.median(1)[0].view(-1)
+
+        if return_features:
+            return (
+                y_ori,
+                y_sup,
+                y_sup_agg,
+                None,
+                None,
+                target_tokens,
+                support_tokens.view(B, S, T, self.channels),
+            )
+        return y_ori, y_sup, y_sup_agg, None, None

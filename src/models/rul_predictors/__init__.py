@@ -20,6 +20,7 @@ from .elastic_aligned_diff_batlinet import (
 )
 from .latent_cross_attention_batlinet import (
     LatentCrossAttentionBatLiNetRULPredictor,
+    LatentCrossAttentionRelationTokensBatLiNetRULPredictor,
 )
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
