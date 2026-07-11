@@ -22,10 +22,10 @@ from .latent_cross_attention_batlinet import (
     LatentCrossAttentionBatLiNetRULPredictor,
     LatentCrossAttentionRelationTokensBatLiNetRULPredictor,
 )
+from .hgr_batlinet import HGRBatLiNetRULPredictor
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor
 from .cell_diff_cnn import CellDifferenceCNNRULPredictor
 from .cycle_diff_cnn import CycleDifferenceCNNRULPredictor
 from .naive_diff_cnn import NaiveDifferenceCNNRULPredictor
-
