@@ -266,6 +266,12 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
             ])
             return loss
 
+        return self.combine_predictions(y_ori, y_sup_agg)
+
+    def combine_predictions(self,
+                            y_ori: torch.Tensor,
+                            y_sup_agg: torch.Tensor) -> torch.Tensor:
+        """Combine the target-only and aggregated support predictions."""
         return (1. - self.alpha) * y_ori + self.alpha * y_sup_agg
 
     def compute_prediction_components(self,
@@ -329,7 +335,7 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
                     x, support_feature, dataset.train_data.label,
                     support_is_prepared=True)
                 loss = self.forward(x, y, sup_x, sup_y, return_loss=True)
-                loss.backward()
+                (loss / self.grad_accum_steps).backward()
 
                 if (
                     indx == len(ori_loader) - 1
@@ -376,6 +382,7 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
             'y_sup_agg': [],
             'support_index': [],
             'support_weight': [],
+            'support_score': [],
         } if return_diagnostics else None
         offset = 0
         for _, data_batch in enumerate(ori_loader):
@@ -392,9 +399,9 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
                 return_indices=True,
                 support_is_prepared=True)
             if return_diagnostics:
-                y_ori, y_sup, y_sup_agg, weight, _ = \
+                y_ori, y_sup, y_sup_agg, weight, score = \
                     self.compute_prediction_components(x, sup_x, sup_y)
-                pred = (1. - self.alpha) * y_ori + self.alpha * y_sup_agg
+                pred = self.combine_predictions(y_ori, y_sup_agg)
                 predictions.append(pred)
                 diagnostics['y_ori'].append(y_ori)
                 diagnostics['y_sup'].append(y_sup)
@@ -402,6 +409,8 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
                 diagnostics['support_index'].append(sup_indx)
                 if weight is not None:
                     diagnostics['support_weight'].append(weight)
+                if score is not None:
+                    diagnostics['support_score'].append(score)
             else:
                 predictions.append(self.forward(x, y, sup_x, sup_y))
 
@@ -418,12 +427,16 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
         support_weight = None
         if diagnostics['support_weight']:
             support_weight = torch.cat(diagnostics['support_weight'])
+        support_score = None
+        if diagnostics['support_score']:
+            support_score = torch.cat(diagnostics['support_score'])
         diagnostics = {
             'y_ori': torch.cat(diagnostics['y_ori']),
             'y_sup': torch.cat(diagnostics['y_sup']),
             'y_sup_agg': torch.cat(diagnostics['y_sup_agg']),
             'support_index': torch.cat(diagnostics['support_index']),
             'support_weight': support_weight,
+            'support_score': support_score,
         }
         return predictions, diagnostics
 
