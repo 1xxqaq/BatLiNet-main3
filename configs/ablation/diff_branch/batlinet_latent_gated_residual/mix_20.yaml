@@ -11,7 +11,7 @@ model:
     test_support_size: 32
     gradient_accumulation_steps: 4
     evaluate_freq: 100
-    checkpoint_freq: 2000
+    checkpoint_freq: 1000
     filter_cycles: False
     alpha: 1.0
     attention_channels: 64
