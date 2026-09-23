@@ -31,6 +31,9 @@ from .axis_aware_multiscale_batlinet import (
 from .dual_view_latent_cross_attention_batlinet import (
     DualViewLatentCrossAttentionBatLiNetRULPredictor,
 )
+from .amplitude_aware_dual_view_batlinet import (
+    AmplitudeAwareDualViewLatentCrossAttentionBatLiNetRULPredictor,
+)
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor

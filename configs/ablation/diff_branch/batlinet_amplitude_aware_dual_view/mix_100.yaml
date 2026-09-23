@@ -1,0 +1,46 @@
+model:
+    name: 'AmplitudeAwareDualViewLatentCrossAttentionBatLiNetRULPredictor'
+    in_channels: 6
+    channels: 32
+    input_height: 100
+    input_width: 1000
+    epochs: 1000
+    train_batch_size: 128
+    test_batch_size: 1
+    train_support_size: 2
+    test_support_size: 32
+    gradient_accumulation_steps: 1
+    evaluate_freq: 100
+    checkpoint_freq: 1000
+    filter_cycles: False
+    alpha: 0.5
+    attention_channels: 64
+    attention_heads: 4
+    attention_layers: 1
+    attention_dropout: 0.1
+    attention_mlp_ratio: 2
+    head_hidden_channels: 64
+    encoder_dropout: 0.1
+    capacity_bins: 32
+    stem_channels: 32
+    cycle_encoder_layers: 1
+    amplitude_gate_init: -2.0
+train_test_split:
+    name: 'MIX100TrainTestSplitter'
+    cell_data_path:
+        - 'data/processed/CALCE'
+        - 'data/processed/RWTH'
+        - 'data/processed/UL_PUR'
+        - 'data/processed/HNEI'
+        - 'data/processed/MATR'
+        - 'data/processed/HUST'
+feature:
+    name: 'BatLiNetFeatureExtractor'
+    smooth_features: False
+label:
+    name: 'RULLabelAnnotator'
+label_transformation:
+    name: 'SequentialDataTransformation'
+    transformations:
+        - name: 'LogScaleDataTransformation'
+        - name: 'ZScoreDataTransformation'
