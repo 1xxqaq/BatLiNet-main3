@@ -22,6 +22,9 @@ from .latent_cross_attention_batlinet import (
     LatentCrossAttentionBatLiNetRULPredictor,
     LatentCrossAttentionRelationTokensBatLiNetRULPredictor,
 )
+from .structured_axis_latent_cross_attention_batlinet import (
+    StructuredAxisLatentCrossAttentionBatLiNetRULPredictor,
+)
 from .latent_gated_residual_batlinet import (
     LatentGatedResidualBatLiNetRULPredictor,
 )
