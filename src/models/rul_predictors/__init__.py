@@ -28,6 +28,9 @@ from .latent_gated_residual_batlinet import (
 from .axis_aware_multiscale_batlinet import (
     AxisAwareMultiScaleLatentCrossAttentionBatLiNetRULPredictor,
 )
+from .dual_view_latent_cross_attention_batlinet import (
+    DualViewLatentCrossAttentionBatLiNetRULPredictor,
+)
 from .dummy import DummyRULPredictor
 from .ridge import RidgeRULPredictor
 from .gaussian_process import GaussianProcessRULPredictor
