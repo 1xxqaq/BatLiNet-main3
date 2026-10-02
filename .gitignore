@@ -18,3 +18,4 @@
 /artifacts/frozen_reference_cache
 *.ckpt
 *.pt
+/evaluations/mix20_cycle_mixer_v1/

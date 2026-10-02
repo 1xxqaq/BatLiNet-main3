@@ -178,6 +178,8 @@ def train(args):
     fixed = fixed_protocol(context, args.seed, 'val', Path(args.protocol_dir) / f'val_seed{args.seed}.pt')['indices']
     common.seed_all(args.seed)
     config = dict(architecture=args.model, cycles=20, width=1000)
+    if args.model in ('latent_cycle_mixer', 'latent_cycle_conv'):
+        config.update(cycle_mixer_hidden=16, cycle_conv_kernel=3)
     model = MatchedBaseline(**config).to(args.device)
     training = data['train']
     y = training['labels'].log()
@@ -253,7 +255,8 @@ def main():
     q.add_argument('--data', required=True)
     q.add_argument('--protocol-dir', required=True)
     q.add_argument('--workspace', required=True)
-    q.add_argument('--model', choices=['batlinet', 'latent_cross_attention'], required=True)
+    q.add_argument('--model', choices=['batlinet', 'latent_cross_attention',
+                                     'latent_cycle_mixer', 'latent_cycle_conv'], required=True)
     q.add_argument('--seed', type=int, required=True)
     q.add_argument('--epochs', type=int, default=1000)
     q.add_argument('--batch-size', type=int, default=8)

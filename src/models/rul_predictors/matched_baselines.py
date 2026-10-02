@@ -6,10 +6,14 @@ from torch import nn
 
 from .batlinet import BatLiNetRULPredictor
 from .latent_cross_attention_batlinet import LatentCrossAttentionBatLiNetRULPredictor
+from .cycle_mixer_latent_cross_attention_batlinet import (
+    CycleMixerLatentCrossAttentionBatLiNetRULPredictor,
+)
 
 
 class MatchedBaseline(nn.Module):
-    def __init__(self, architecture, cycles=20, width=1000):
+    def __init__(self, architecture, cycles=20, width=1000,
+                 cycle_mixer_hidden=16, cycle_conv_kernel=3):
         super().__init__()
         self.architecture = architecture
         self.alpha = .5
@@ -20,6 +24,11 @@ class MatchedBaseline(nn.Module):
             self.base = BatLiNetRULPredictor(diff_base=0, **options)
         elif architecture == 'latent_cross_attention':
             self.base = LatentCrossAttentionBatLiNetRULPredictor(**options)
+        elif architecture in ('latent_cycle_mixer', 'latent_cycle_conv'):
+            self.base = CycleMixerLatentCrossAttentionBatLiNetRULPredictor(
+                cycle_mixer_type='mlp' if architecture == 'latent_cycle_mixer' else 'conv',
+                cycle_mixer_hidden=cycle_mixer_hidden,
+                cycle_conv_kernel=cycle_conv_kernel, **options)
         else:
             raise ValueError(f'Unknown baseline: {architecture}')
 
