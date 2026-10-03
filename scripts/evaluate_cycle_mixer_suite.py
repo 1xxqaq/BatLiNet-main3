@@ -60,7 +60,7 @@ def preflight(folder, data, data_sha, context_sha, seed, architecture, protocol_
 
 
 def print_summary(rows, partition):
-    print(f'{partition}指标汇总；MAPE 为小数，ACC15 为百分数。', flush=True)
+    print(f'{partition}指标汇总；MAPE、ACC15 均为小数比例。', flush=True)
     for architecture in ARCHITECTURES:
         selected = [r for r in rows if r['model'] == architecture]
         if not selected:
