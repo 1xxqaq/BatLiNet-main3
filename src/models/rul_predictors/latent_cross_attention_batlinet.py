@@ -325,9 +325,15 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
         ori_loader = DataLoader(
             train_dataset, self.train_batch_size, shuffle=False)
 
+        progress = getattr(self, '_training_progress', None)
+        if progress is not None:
+            progress.start(self.train_epochs, len(ori_loader))
         latest = None
-        for epoch in tqdm(range(self.train_epochs), desc='Training'):
+        for epoch in tqdm(range(self.train_epochs), desc='Training',
+                          disable=progress is not None):
             self.train()
+            if progress is not None:
+                progress.epoch_started(epoch + 1)
 
             for indx, data_batch in enumerate(ori_loader):
                 x, y = data_batch.values()
@@ -343,24 +349,32 @@ class LatentCrossAttentionBatLiNetRULPredictor(NNModel):
                 ):
                     optimizer.step()
                     optimizer.zero_grad()
+                if progress is not None:
+                    progress.batch_finished(epoch + 1, indx + 1)
 
             if (
                 self.workspace is not None
                 and self.checkpoint_freq is not None
                 and (epoch + 1) % self.checkpoint_freq == 0
             ):
+                if progress is not None:
+                    progress.phase('保存权重')
                 filename = self.workspace / (
                     f'{timestamp}_seed_{self.seed}_epoch_{epoch+1}.ckpt')
                 self.dump_checkpoint(filename)
                 latest = filename
 
             if (epoch + 1) % self.evaluate_freq == 0:
+                if progress is not None:
+                    progress.phase('周期测试评估')
                 del loss, sup_x, sup_y, x, y
                 pred = self.predict(dataset)
                 score = dataset.evaluate(pred, 'RMSE')
                 message = f'[{epoch+1}/{self.train_epochs}] RMSE {score:.2f}'
                 print(message, flush=True)
                 del pred
+            if progress is not None:
+                progress.epoch_finished(epoch + 1)
 
         if latest is not None and self.workspace is not None:
             self.link_latest_checkpoint(latest)

@@ -1,9 +1,12 @@
 """Shared intra-cell self-attention before BatLiNet cross-cell attention."""
 
+import os
+
 import torch
 import torch.nn as nn
 
 from src.builders import MODELS
+from src.utils.training_progress import TrainingProgress
 
 from .latent_cross_attention_batlinet import (
     ConvTokenEncoder,
@@ -86,3 +89,21 @@ class LatentSelfCrossAttentionBatLiNetRULPredictor(
             self.cell_encoder = SelfAttentiveConvTokenEncoder(
                 self.cell_encoder, self_attention_layers, heads,
                 self_attention_mlp_ratio, self_attention_dropout)
+
+    def fit(self, dataset, timestamp):
+        progress = TrainingProgress(
+            model_name='潜在自注意力与交叉注意力', seed=self.seed,
+            task=os.environ.get('BATLINET_TASK', '未指定'),
+            training_number=int(os.environ.get('BATLINET_TRAINING_NUMBER', '1')),
+            total_trainings=int(os.environ.get('BATLINET_TOTAL_TRAININGS', '1')),
+            log_interval=float(os.environ.get('PROGRESS_INTERVAL_SECONDS', '30')),
+        )
+        self._training_progress = progress
+        try:
+            super().fit(dataset, timestamp)
+            progress.finish()
+        except BaseException:
+            progress.fail()
+            raise
+        finally:
+            self._training_progress = None
