@@ -1,0 +1,1 @@
+scripts/run_latent_self_cross_attention.sh text eol=lf
