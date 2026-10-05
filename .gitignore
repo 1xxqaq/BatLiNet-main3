@@ -19,3 +19,5 @@
 *.ckpt
 *.pt
 /evaluations/mix20_cycle_mixer_v1/
+/evaluations/mix20_dual_axis_v1/
+/logs/mix20_dual_axis*.log

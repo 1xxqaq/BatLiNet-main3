@@ -25,6 +25,9 @@ from .latent_cross_attention_batlinet import (
 from .cycle_mixer_latent_cross_attention_batlinet import (
     CycleMixerLatentCrossAttentionBatLiNetRULPredictor,
 )
+from .dual_axis_latent_cross_attention_batlinet import (
+    DualAxisLatentCrossAttentionBatLiNetRULPredictor,
+)
 from .structured_axis_latent_cross_attention_batlinet import (
     StructuredAxisLatentCrossAttentionBatLiNetRULPredictor,
 )
