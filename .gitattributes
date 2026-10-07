@@ -1,0 +1,5 @@
+/configs/three_tasks_v1/**/*.yaml text eol=lf
+/scripts/run_three_tasks.py text eol=lf
+/scripts/test_three_tasks_runner.py text eol=lf
+/scripts/start_three_tasks_nohup.sh text eol=lf
+/docs/three_tasks_v1* text eol=lf

@@ -1,0 +1,81 @@
+model:
+  name: CycleMixerLatentCrossAttentionBatLiNetRULPredictor
+  in_channels: 6
+  channels: 32
+  input_height: 100
+  input_width: 1000
+  epochs: 1000
+  train_batch_size: 128
+  test_batch_size: 1
+  train_support_size: 2
+  test_support_size: 32
+  gradient_accumulation_steps: 1
+  evaluate_freq: 1000
+  checkpoint_freq: 25
+  alpha: 0.5
+  filter_cycles: false
+  lr: 0.001
+  features_to_drop: null
+  cycles_to_drop: null
+  attention_channels: 64
+  attention_heads: 4
+  attention_layers: 1
+  attention_dropout: 0.1
+  encoder_dropout: 0.1
+  cycle_mixer_hidden: 16
+  cycle_mixer_type: mlp
+  cycle_conv_kernel: 3
+  attention_mlp_ratio: 2
+  head_hidden_channels: 64
+  support_size: 1
+  return_pointwise_predictions: false
+  fixed_test_support_index_path: null
+  workspace: null
+train_test_split:
+  name: HUSTTrainTestSplitter
+  cell_data_path: data/processed/HUST
+feature:
+  name: BatLiNetFeatureExtractor
+  smooth_features: false
+  interp_dim: 1000
+  min_cycle_index: 0
+  max_cycle_index: 99
+  max_capacity: 1.2
+  diff_base: null
+  feature_to_drop: null
+  cycle_to_drop: null
+  smooth_window_size: 201
+  smooth_device: cuda:0
+label:
+  name: RULLabelAnnotator
+  eol_soh: 0.8
+  pad_eol: true
+  min_rul_limit: 100
+label_transformation:
+  name: SequentialDataTransformation
+  transformations:
+  - name: LogScaleDataTransformation
+  - name: ZScoreDataTransformation
+runner:
+  schema: 1
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  micro_batch_size: 16
+  pair_chunk: 8
+  precision: float32
+  shuffle: false
+  weight_decay: 0.01
+  checkpoint_every: 25
+  selection: fixed_epoch_1000
+  label_std: sample
+  train_reference_rng: independent_cpu_seed
+  test_reference_rng: independent_cpu_seed_plus_200000
+  test_during_training: false
+  compile: false
