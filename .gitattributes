@@ -15,3 +15,9 @@
 /scripts/test_cross_chem_cycle_soft_difference.py text eol=lf
 /scripts/start_cross_chem_cycle_soft_difference_nohup.sh text eol=lf
 /docs/cross_chem_cycle_soft_difference* text eol=lf
+/configs/cross_chem_two_models_v2/**/*.yaml text eol=lf
+/scripts/original_cross_chem_transfer.py text eol=lf
+/scripts/run_cross_chem_two_models.py text eol=lf
+/scripts/test_cross_chem_two_models.py text eol=lf
+/scripts/start_cross_chem_two_models_nohup.sh text eol=lf
+/docs/cross_chem_two_models* text eol=lf

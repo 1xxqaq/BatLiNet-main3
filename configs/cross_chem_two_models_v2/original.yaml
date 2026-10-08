@@ -1,0 +1,37 @@
+schema: 1
+name: batlinet_author_transfer
+network:
+  in_channels: 6
+  channels: 32
+  input_height: 100
+  input_width: 1000
+  kernel_size: 3
+  act_fn: relu
+preprocessing:
+  cycle_diff_base: 9
+  clip_absolute_over: 10.0
+  clip_after_difference: true
+training:
+  own_epochs: 100
+  relation_epochs: 100
+  relation_patience: 5
+  own_batch: 32
+  relation_batch: 128
+  micro_batch: 8
+  inference_chunk: 8
+  lr: 0.001
+  weight_decay: 0.01
+  shuffle: false
+  precision: float32
+  checkpoint_every: 1
+label:
+  units: raw_cycles
+  own_statistics: target_training_sample_std_else_LFP_sample_std
+  delta_statistics: training_pairs_only_sample_std
+prediction:
+  reference_count: 275
+  aggregation: positive_prediction_median_in_cycles
+  fusion: arithmetic_mean_own_relation
+  shared_output_layer: false
+  active_dropout: false
+  test_during_training: false

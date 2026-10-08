@@ -86,7 +86,7 @@ def check_manifest(folder, manifest, identity):
     return manifest
 
 
-def prepare(source_root, workspace, code_hashes):
+def prepare(source_root, workspace, code_hashes, policy=None):
     source_root=Path(source_root).resolve();folder=Path(workspace)/'dataset'
     folder.mkdir(parents=True,exist_ok=True)
     cached=source_root/'cache/transfer.pkl'
@@ -103,7 +103,7 @@ def prepare(source_root, workspace, code_hashes):
             files.extend(current)
         route=dict(kind='processed_cells',root=str(processed),
                    files=[dict(path=str(p),sha256=common.digest(p)) for p in files])
-    identity=dict(policy=POLICY,source=route,code_hashes=code_hashes)
+    identity=dict(policy=POLICY if policy is None else policy,source=route,code_hashes=code_hashes)
     manifest_path=folder/'manifest.json'
     if manifest_path.exists():
         return check_manifest(folder,json.loads(manifest_path.read_text(encoding='utf-8')),identity)
@@ -149,7 +149,7 @@ def prepare(source_root, workspace, code_hashes):
     return audit
 
 
-def build_protocol(records, target, count, seed):
+def build_protocol(records, target, count, seed, policy=None):
     validate_counts(records)
     if target not in TRAIN_COUNTS or count not in TRAIN_COUNTS[target] or seed not in range(8):
         raise ValueError('化学体系、训练数量或种子不在冻结协议中。')
@@ -165,13 +165,13 @@ def build_protocol(records, target, count, seed):
     train_pairs=torch.from_numpy(order[:cut].copy()).long()
     val_pairs=torch.from_numpy(order[cut:].copy()).long()
     if not len(train_pairs) or not len(val_pairs):raise ValueError('电池对划分为空。')
-    return dict(policy=POLICY,target_chemistry=target,target_train_count=count,seed=seed,
+    return dict(policy=POLICY if policy is None else policy,target_chemistry=target,target_train_count=count,seed=seed,
                 source_ids=source,target_train_ids=training,target_test_ids=tests,
                 unused_target_ids=candidates[count:],train_pairs=train_pairs,val_pairs=val_pairs)
 
 
-def validate_protocol(p, records):
-    expected=build_protocol(records,p['target_chemistry'],p['target_train_count'],p['seed'])
+def validate_protocol(p, records, policy=None):
+    expected=build_protocol(records,p['target_chemistry'],p['target_train_count'],p['seed'],policy)
     for key,value in expected.items():
         if torch.is_tensor(value):
             if not torch.equal(p[key],value):raise ValueError(f'协议数组被修改：{key}')
@@ -182,24 +182,26 @@ def validate_protocol(p, records):
     if sorted(pairs.tolist())!=list(range(len(source)*len(train))):raise ValueError('电池对划分重复或缺失。')
 
 
-def protocol(manifest, target, count, seed, workspace):
+def protocol(manifest, target, count, seed, workspace, policy=None):
     path=Path(workspace)/'protocols'/target/f'train_{count}'/f'seed_{seed}.pt'
-    p=build_protocol(manifest['records'],target,count,seed)
+    p=build_protocol(manifest['records'],target,count,seed,policy)
     if path.exists():p=common.load(path)
     else:common.save(p,path)
-    validate_protocol(p,manifest['records'])
+    validate_protocol(p,manifest['records'],policy)
     return p,path
 
 
-def load_part(ids, manifest, workspace):
+def load_part(ids, manifest, workspace, clip=True):
     lookup={r['cell_id']:r for r in manifest['records']}
     xs=[];ys=[]
     for cell_id in ids:
         record=lookup[cell_id];path=Path(workspace)/'dataset'/record['feature_file']
+        if common.digest(path)!=record['feature_sha256']:raise ValueError('加载时特征指纹与收据不同。')
         value=common.load(path)
         if value['cell_id']!=cell_id or value['label_cycles']!=record['label_cycles'] or tuple(value['feature'].shape)!=(6,100,1000):
             raise ValueError('缓存内容与已核验收据不同。')
-        x=value['feature'].float().clone();x[x.abs()>10]=0
+        x=value['feature'].float().clone()
+        if clip:x[x.abs()>10]=0
         if not torch.isfinite(x).all():raise ValueError('模型输入非有限。')
         xs.append(x);ys.append(float(value['label_cycles']))
     return dict(feature=torch.stack(xs),label=torch.tensor(ys),ids=list(ids))

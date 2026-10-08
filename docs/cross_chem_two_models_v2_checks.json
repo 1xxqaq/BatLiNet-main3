@@ -1,0 +1,52 @@
+{
+  "timestamp_utc": "2026-10-08T16:12:07.302178+00:00",
+  "status": "passed",
+  "total_tests": 23,
+  "tests": {
+    "original_and_two_model_checks": [
+      "test_224_model_cases_share_one_protocol_and_label_rules_are_separate",
+      "test_author_cnn_exact_initial_state_forward_and_gradients",
+      "test_both_models_complete_metrics_receipts_same_ids_and_readonly_report",
+      "test_both_preflight_paths_use_training_inputs_and_all_references",
+      "test_full_size_original_network_parameters_and_backprop",
+      "test_microbatch_gradients_match_whole_batches_including_tail",
+      "test_original_all_reference_predictions_signed_delta_positive_median_raw_fusion",
+      "test_original_staged_crash_resume_exact_and_partial_log_removed",
+      "test_raw_label_statistics_use_train_pairs_and_source_fallback_without_test",
+      "test_relation_early_stop_best_and_own_fixed_final",
+      "test_signed_inputs_clip_after_subtraction_and_do_not_mutate_raw",
+      "test_summary_retains_all_seeds_sample_population_std_and_paired_direction"
+    ],
+    "legacy_combination_checks": [
+      "test_cached_all_reference_inference_matches_direct_pair_forward",
+      "test_crash_resume_exact_weights_rng_and_log_reconciliation",
+      "test_data_preparation_cache_and_raw_routes_counts_and_fingerprints",
+      "test_early_stopping_saves_independent_best_state_and_no_test_needed",
+      "test_fixed_tests_nested_training_lfp_only_and_pair_partition",
+      "test_frozen_configuration_and_complete_112_run_plan",
+      "test_full_size_single_pair_backpropagation",
+      "test_label_statistics_exclude_test_and_use_sample_std",
+      "test_predictions_metrics_completed_receipts_and_tamper_detection",
+      "test_saved_feature_shape_label_and_clip_checks",
+      "test_weighted_microbatches_include_partial_logical_batch"
+    ]
+  },
+  "python": "3.11.15",
+  "torch": "2.11.0+cpu",
+  "kind": "CPU_synthetic_only",
+  "bash_syntax": "passed",
+  "python_compilation": "passed",
+  "formal_training_started": false,
+  "real_data_counts_observed": false,
+  "cuda_tested": false,
+  "original_parameters": 2274946,
+  "combination_parameters": 211556,
+  "model_cases": 224,
+  "original_network_matches_local_author_classes_exactly": true,
+  "protocol": "LFP_only_fixed_tests_nested_training_same_pairs_two_models",
+  "limitations": [
+    "真实电池数量及显存由服务器预检。",
+    "作者本地迁移实现和论文有披露的版本、划分及训练差异。",
+    "未取得论文图4精确数值表。"
+  ]
+}
