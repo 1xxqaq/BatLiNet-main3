@@ -1,0 +1,87 @@
+model:
+  name: CycleMixerSoftAlignedDifferenceBatLiNetRULPredictor
+  in_channels: 6
+  channels: 32
+  input_height: 20
+  input_width: 1000
+  epochs: 1000
+  train_batch_size: 128
+  test_batch_size: 1
+  train_support_size: 2
+  test_support_size: 32
+  gradient_accumulation_steps: 1
+  evaluate_freq: 100
+  checkpoint_freq: 25
+  filter_cycles: false
+  attention_channels: 64
+  attention_heads: 4
+  attention_layers: 1
+  attention_dropout: 0.1
+  attention_mlp_ratio: 2
+  head_hidden_channels: 64
+  encoder_dropout: 0.1
+  alpha: 0.5
+  lr: 0.001
+  features_to_drop: null
+  cycles_to_drop: null
+  support_size: 1
+  return_pointwise_predictions: false
+  fixed_test_support_index_path: null
+  workspace: null
+  cycle_mixer_hidden: 16
+train_test_split:
+  name: MIX20TrainTestSplitter
+  cell_data_path:
+  - data/processed/CALCE
+  - data/processed/RWTH
+  - data/processed/UL_PUR
+  - data/processed/SNL
+  - data/processed/MATR
+  - data/processed/HUST
+  - data/processed/HNEI
+feature:
+  name: BatLiNetFeatureExtractor
+  max_cycle_index: 19
+  cycle_to_drop: 10
+  smooth_features: false
+  interp_dim: 1000
+  min_cycle_index: 0
+  feature_to_drop: null
+  diff_base: null
+  max_capacity: 1.2
+label:
+  name: RULLabelAnnotator
+  eol_soh: 0.9
+  min_rul_limit: 100
+  pad_eol: true
+label_transformation:
+  name: SequentialDataTransformation
+  transformations:
+  - name: LogScaleDataTransformation
+  - name: ZScoreDataTransformation
+runner:
+  schema: 1
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  micro_batch_size: 128
+  pair_chunk: 32
+  precision: float32
+  shuffle: false
+  optimizer: AdamW
+  weight_decay: 0.01
+  checkpoint_every: 25
+  selection: fixed_epoch_1000
+  label_std: historical_sample
+  train_reference_rng: global_torch_rng_on_training_device
+  test_reference: reuse_historical_actual_indices
+  test_during_training: false
+  compile: false
+  periodic_rng_compensation: true
+  periodic_rng_every: 100
