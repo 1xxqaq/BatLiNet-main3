@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-08T15:38:16.703087+00:00",
+  "kind": "CPU_synthetic_checks_only",
+  "status": "passed",
+  "test_count": 11,
+  "test_names": [
+    "test_cached_all_reference_inference_matches_direct_pair_forward",
+    "test_crash_resume_exact_weights_rng_and_log_reconciliation",
+    "test_data_preparation_cache_and_raw_routes_counts_and_fingerprints",
+    "test_early_stopping_saves_independent_best_state_and_no_test_needed",
+    "test_fixed_tests_nested_training_lfp_only_and_pair_partition",
+    "test_frozen_configuration_and_complete_112_run_plan",
+    "test_full_size_single_pair_backpropagation",
+    "test_label_statistics_exclude_test_and_use_sample_std",
+    "test_predictions_metrics_completed_receipts_and_tamper_detection",
+    "test_saved_feature_shape_label_and_clip_checks",
+    "test_weighted_microbatches_include_partial_logical_batch"
+  ],
+  "python": "3.11.15",
+  "torch": "2.11.0+cpu",
+  "cuda_tested": false,
+  "bash_syntax": "passed",
+  "formal_training_started": false,
+  "limitations": [
+    "本地无真实迁移数据；403块有效电池数量未实读。",
+    "CPU一致性不代替服务器CUDA显存和数据预检。"
+  ]
+}

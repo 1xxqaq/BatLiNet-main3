@@ -9,3 +9,9 @@
 /scripts/test_mix_cycle_soft_difference.py text eol=lf
 /scripts/start_mix_cycle_soft_difference_nohup.sh text eol=lf
 /docs/mix_cycle_soft_difference* text eol=lf
+/configs/cross_chem_cycle_soft_difference_v1/**/*.yaml text eol=lf
+/scripts/run_cross_chem_cycle_soft_difference.py text eol=lf
+/scripts/transfer_cycle_soft_data.py text eol=lf
+/scripts/test_cross_chem_cycle_soft_difference.py text eol=lf
+/scripts/start_cross_chem_cycle_soft_difference_nohup.sh text eol=lf
+/docs/cross_chem_cycle_soft_difference* text eol=lf

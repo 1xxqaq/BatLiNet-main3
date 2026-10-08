@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-08",
+  "paper": "https://www.nature.com/articles/s42256-024-00972-x",
+  "official_capsule": "https://doi.org/10.24433/CO.8904065.v2",
+  "official_capsule_downloaded": false,
+  "official_web_status": 403,
+  "files": {
+    "transfer_reproduce/preprocess_feature.ipynb": "d373ddbfb17ec0e30295e545832fbb10587dbd2d47250638e043d504717433f6",
+    "transfer_reproduce/finalized.ipynb": "8f5bce69e2cd40f053564a231059bb22dfc931ce0bd43cfb2427d3f90aa97a2a",
+    "transfer_exp.ipynb": "d91d902c3b2fba2c6f9ccf8459adff2d1585c06ed999715c8280d15b5105745f"
+  },
+  "recorded_counts": {
+    "LFP": 275,
+    "LCO": 37,
+    "NCA": 22,
+    "NMC": 69
+  },
+  "recorded_counts_are_server_observed": false,
+  "local_behavior": [
+    "all_non_target_chemistries_as_reference",
+    "test_remainder_changes_with_training_count",
+    "exhaustive_target_reference_pairs",
+    "80_percent_pairs_training_20_percent_pairs_validation",
+    "pair_validation_shares_selected_training_cells",
+    "10_epoch_debug_and_100_epoch_relation_versions"
+  ],
+  "corrected_issues": [
+    "restore_train_mode_each_epoch",
+    "deep_clone_best_weights",
+    "consistent_normalized_validation_units",
+    "complementary_validation_indices"
+  ]
+}
