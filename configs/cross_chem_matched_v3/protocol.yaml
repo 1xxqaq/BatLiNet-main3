@@ -1,0 +1,46 @@
+schema: 3
+experiment: cross_chem_matched_v3
+models: [direct, finetune, combination]
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]
+data:
+  source_chemistry: LFP
+  source_count: 275
+  input_shape: [6, 100, 1000]
+  clip_absolute_over: 10.0
+  reuse_actual_saved_ids: true
+  regenerate_missing_protocols: false
+  use_all_training_pairs: true
+  eol_soh: 0.8
+label:
+  transformation: natural_log_fixed_scale
+  lifetime_scale: 1000.0
+training:
+  optimizer: AdamW
+  weight_decay: 0.01
+  logical_batch: 128
+  micro_batch: 8
+  precision: float32
+  shuffle: false
+  checkpoint_every: 25
+  report_every: 25
+  selection: fixed_final_optimizer_step
+  early_stopping: false
+  test_after_all_formal_training: true
+  finetune_all_parameters: true
+  finetune_new_optimizer: true
+  finetune_start_from_original_source_checkpoint: true
+  reference_count: 275
+  inference_chunk: 8
+pilot:
+  source_only: true
+  split_seeds: [0, 1]
+  source_count: 219
+  training_pool_count: 16
+  validation_count: 40
+  target_counts: [1, 16]
+  learning_rates: [0.001, 0.0003]
+  candidate_steps: [100, 300, 1000]
+  metric: mean_squared_fixed_log_lifetime_error
+  aggregation: equal_weight_split_count_method
+  learning_rate_shared_by_all_stages: true
+  ties: learning_rate_list_order_then_smallest_step
