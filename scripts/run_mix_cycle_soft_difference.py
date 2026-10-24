@@ -230,7 +230,7 @@ def restore_rng(value, device):
     common.restore_rng(dict(value,references=dummy.get_state()),dummy,device)
 
 
-def train_run(data,cfg,seed,folder,binding,device):
+def train_run(data,cfg,seed,folder,binding,device,epoch_runner=None):
     folder.mkdir(parents=True,exist_ok=True)
     historical20.set_seed(seed)
     model = common.MODELS.build(cfg['model'],seed=seed).to(device)
@@ -266,15 +266,15 @@ def train_run(data,cfg,seed,folder,binding,device):
     with (folder/'train.jsonl').open('a',encoding='utf-8') as log:
         for epoch in range(start+1,cfg['model']['epochs']+1):
             tick=time.monotonic()
-            row=train_epoch(model,optimizer,ds,cfg['runner']['micro_batch_size'],cfg['runner']['periodic_rng_every'],epoch,len(data['test']['ids']))
+            row=(epoch_runner or train_epoch)(model,optimizer,ds,cfg['runner']['micro_batch_size'],cfg['runner']['periodic_rng_every'],epoch,len(data['test']['ids']))
             row.update(epoch=epoch,seconds=time.monotonic()-tick,
                        cuda_peak_GiB=torch.cuda.max_memory_allocated(device)/2**30 if device.startswith('cuda') else 0.)
             log.write(json.dumps(row)+'\n');log.flush()
             if epoch % cfg['runner']['checkpoint_every']==0 or epoch==cfg['model']['epochs']:
                 os.fsync(log.fileno())
                 common.save(dict(epoch=epoch,binding=binding,state=model.state_dict(),optimizer=optimizer.state_dict(),rng=capture_rng(device)),progress)
-                common.atomic_json(dict(status='training',task=binding['task'],model=MODEL,seed=seed,epoch=epoch),folder.parent.parent/'status.json')
-                print(f'{binding["task"]} 组合版种子{seed} [{epoch}/{cfg["model"]["epochs"]}] 损失 {row["train_loss"]:.6f}，本轮 {row["seconds"]:.1f}秒',flush=True)
+                common.atomic_json(dict(status='training',task=binding['task'],model=binding.get('model',MODEL),seed=seed,epoch=epoch),folder.parent.parent/'status.json')
+                print(f'{binding["task"]} {binding.get("model",MODEL)} 种子{seed} [{epoch}/{cfg["model"]["epochs"]}] 损失 {row["train_loss"]:.6f}，本轮 {row["seconds"]:.1f}秒',flush=True)
     common.save(dict(epoch=cfg['model']['epochs'],binding=binding,state=model.state_dict()),final)
     common.atomic_json(dict(status='trained',binding=binding,final_sha256=common.digest(final)),folder/'run.json')
 
@@ -335,7 +335,7 @@ def evaluate_run(data,cfg,seed,folder,binding,indices,device):
     if measured!=result['scores']:
         raise ValueError('保存指标不能复算。')
     common.atomic_json(dict(status='complete',binding=binding,final_sha256=sha,test_sha256=common.digest(path),scores=measured),folder/'run.json')
-    return dict(task=binding['task'],model=MODEL,seed=seed,**measured)
+    return dict(task=binding['task'],model=binding.get('model',MODEL),seed=seed,**measured)
 
 
 def preflight(data,cfg,device):
