@@ -27,3 +27,9 @@
 /scripts/test_mix_branch_ablation.py text eol=lf
 /scripts/start_mix_branch_ablation_nohup.sh text eol=lf
 /docs/mix_branch_ablation_v1.md text eol=lf
+/src/models/rul_predictors/naive_branch_ensemble_batlinet.py text eol=lf
+/scripts/run_mix_naive_ensemble.py text eol=lf
+/scripts/test_naive_branch_ensemble_model.py text eol=lf
+/scripts/test_mix_naive_ensemble.py text eol=lf
+/scripts/start_mix_naive_ensemble_nohup.sh text eol=lf
+/docs/mix_naive_ensemble_v1.md text eol=lf
