@@ -21,3 +21,9 @@
 /scripts/test_cross_chem_two_models.py text eol=lf
 /scripts/start_cross_chem_two_models_nohup.sh text eol=lf
 /docs/cross_chem_two_models* text eol=lf
+/src/models/rul_predictors/branch_ablation_batlinet.py text eol=lf
+/scripts/run_mix_branch_ablation.py text eol=lf
+/scripts/test_branch_ablation_model.py text eol=lf
+/scripts/test_mix_branch_ablation.py text eol=lf
+/scripts/start_mix_branch_ablation_nohup.sh text eol=lf
+/docs/mix_branch_ablation_v1.md text eol=lf
