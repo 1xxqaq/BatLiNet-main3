@@ -1,0 +1,39 @@
+schema: 4
+experiment: cross_chem_earlystop_v4
+models: [direct, finetune, combination]
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]
+label: ln_cycles_divided_by_fixed_1000
+learning_rate: reuse_previous_source_selected_value
+development:
+  reuse_saved_lfp_splits: true
+  split_seeds: [0, 1]
+  source_count: 219
+  training_pool_count: 16
+  validation_count: 40
+  target_counts: [1, 2, 4, 8, 16]
+  metric: final_prediction_fixed_log_mse
+  pretrain_initialization: split_specific_best_source_weights
+  expected_runs: 32
+early_stopping:
+  max_steps: 1000
+  min_stop: 100
+  validate_every: 50
+  patience: 5
+budget:
+  aggregation: median_best_steps_ceil_to_validation_interval
+  group_by: method_and_target_train_count
+  selection: source_only_no_target_test_scores
+training:
+  optimizer: AdamW
+  weight_decay: 0.01
+  logical_batch: 128
+  micro_batch: 8
+  inference_chunk: 8
+  checkpoint_every: 25
+  report_every: 25
+  precision: float32
+  shuffle: false
+  final_weight: fixed_selected_optimizer_step
+  expected_formal_training: 344
+  expected_formal_predictions: 336
+  test_after_all_formal_training: true
