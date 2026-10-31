@@ -7,17 +7,21 @@ cd -- "$ROOT"
   echo "没有定位到v6执行脚本：$ROOT" >&2; exit 1;
 }
 
-PREVIOUS="$ROOT/workspaces/cross_chem_matched_v3"
-WORKSPACE="$ROOT/workspaces/cross_chem_earlystop_v6"
+PREVIOUS=""
+EXISTING=""
+LEARNING_RATE=""
+WORKSPACE=""
 DEVICE="cuda:0"
 MODE="train"
 EXTRA=()
 while (($#)); do
   case "$1" in
-    --previous-workspace|--workspace|--device)
+    --previous-workspace|--existing-workspace|--learning-rate|--workspace|--device)
       [[ $# -ge 2 ]] || { echo "$1 缺少参数。" >&2; exit 2; }
       case "$1" in
         --previous-workspace) PREVIOUS="$2" ;;
+        --existing-workspace) EXISTING="$2" ;;
+        --learning-rate) LEARNING_RATE="$2" ;;
         --workspace) WORKSPACE="$2" ;;
         --device) DEVICE="$2" ;;
       esac
@@ -27,6 +31,24 @@ while (($#)); do
     *) echo "不支持的启动参数：$1" >&2; exit 2 ;;
   esac
 done
+
+if [[ -n "$PREVIOUS" && -n "$EXISTING" ]]; then
+  echo '--previous-workspace与--existing-workspace不能同时指定。' >&2; exit 2;
+fi
+if [[ -n "$EXISTING" ]]; then
+  SOURCE_MODE="v2"
+  WORKSPACE="${WORKSPACE:-$ROOT/workspaces/cross_chem_earlystop_v6_v2}"
+  if [[ "$MODE" != report && -z "$LEARNING_RATE" ]]; then
+    echo '直接使用v2材料时须显式指定--learning-rate，例如0.001；不会猜测v3选值。' >&2; exit 2;
+  fi
+else
+  SOURCE_MODE="v3"
+  PREVIOUS="${PREVIOUS:-$ROOT/workspaces/cross_chem_matched_v3}"
+  WORKSPACE="${WORKSPACE:-$ROOT/workspaces/cross_chem_earlystop_v6}"
+  if [[ -n "$LEARNING_RATE" ]]; then
+    echo 'v3模式沿用其已选学习率，不能用--learning-rate覆盖。' >&2; exit 2;
+  fi
+fi
 
 if ! command -v conda >/dev/null 2>&1; then
   for CANDIDATE in "$HOME/miniconda3/etc/profile.d/conda.sh" \
@@ -46,41 +68,59 @@ command -v "$PYTHON_BIN" >/dev/null
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 PYTHONDONTWRITEBYTECODE=1
 export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 
-PREVIOUS="$("$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$PREVIOUS")"
 WORKSPACE="$("$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$WORKSPACE")"
-for REQUIRED in queue.json selection.json; do
-  [[ -f "$PREVIOUS/$REQUIRED" ]] || {
-    echo "缺少v3的实际来源材料：$PREVIOUS/$REQUIRED；不会重新抽取名单或选择学习率。" >&2; exit 1;
-  }
-done
-EXISTING="$("$PYTHON_BIN" -B -c 'import json,sys; from pathlib import Path; p=Path(sys.argv[1]); q=json.loads((p/"queue.json").read_text(encoding="utf-8")); print(Path(q["existing_workspace"]).resolve())' "$PREVIOUS")"
+if [[ "$MODE" == report ]]; then
+  # Reports use the saved queue identity; missing v3 files must not block them.
+  exec "$PYTHON_BIN" -u -B scripts/run_cross_chem_earlystop_v6.py \
+    --workspace "$WORKSPACE" --device "$DEVICE" --report
+fi
+SOURCE_ARGS=()
+if [[ "$SOURCE_MODE" == v2 ]]; then
+  EXISTING="$("$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$EXISTING")"
+  "$PYTHON_BIN" -B -c 'import math,sys; rate=float(sys.argv[1]); assert math.isfinite(rate) and rate>0, "学习率必须是有限正数"' "$LEARNING_RATE"
+  for REQUIRED in queue.json dataset/manifest.json; do
+    [[ -f "$EXISTING/$REQUIRED" ]] || {
+      echo "缺少v2实际来源材料：$EXISTING/$REQUIRED；不会重新生成数据或名单。" >&2; exit 1;
+    }
+  done
+  [[ -d "$EXISTING/protocols" ]] || { echo "缺少v2实际电池对目录：$EXISTING/protocols" >&2; exit 1; }
+  SOURCE_ANCHOR="$EXISTING"
+  SOURCE_ARGS=(--existing-workspace "$EXISTING" --learning-rate "$LEARNING_RATE")
+else
+  PREVIOUS="$("$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$PREVIOUS")"
+  for REQUIRED in queue.json selection.json pilot/scores.json; do
+    [[ -f "$PREVIOUS/$REQUIRED" ]] || {
+      echo "缺少v3的实际来源材料：$PREVIOUS/$REQUIRED；若本机只有v2，请使用--existing-workspace并显式指定--learning-rate。" >&2; exit 1;
+    }
+  done
+  EXISTING="$("$PYTHON_BIN" -B -c 'import json,sys; from pathlib import Path; p=Path(sys.argv[1]); q=json.loads((p/"queue.json").read_text(encoding="utf-8")); print(Path(q["existing_workspace"]).resolve())' "$PREVIOUS")"
+  SOURCE_ANCHOR="$PREVIOUS"
+  SOURCE_ARGS=(--previous-workspace "$PREVIOUS")
+fi
 KNOWN_QUEUES=(cross_chem_matched_v3 cross_chem_two_models_v2 \
-              cross_chem_earlystop_v4 cross_chem_earlystop_v5 cross_chem_earlystop_v6 \
+              cross_chem_earlystop_v4 cross_chem_earlystop_v5 cross_chem_earlystop_v6 cross_chem_earlystop_v6_v2 \
               cross_chem_cycle_soft_difference_v1 mix_cycle_soft_difference_v1 \
               three_tasks_three_models_v1 mix20_matched_baselines_v1 \
               mix_branch_ablation_v1 mix_naive_ensemble_v1 \
               mix_soft_difference_refinements_v1)
-WORKSPACE_PARENTS=("$ROOT/workspaces" "$(dirname -- "$PREVIOUS")")
-for REPOSITORY_PARENT in "$(dirname -- "$ROOT")" "$(dirname -- "$(dirname -- "$(dirname -- "$PREVIOUS")")")"; do
+WORKSPACE_PARENTS=("$ROOT/workspaces" "$(dirname -- "$SOURCE_ANCHOR")")
+for REPOSITORY_PARENT in "$(dirname -- "$ROOT")" "$(dirname -- "$(dirname -- "$(dirname -- "$SOURCE_ANCHOR")")")"; do
   for TREE in BatLiNet-cycle-mixer BatLiNet-cross-chem-earlystop-v4 BatLiNet-cross-chem-earlystop-v5 BatLiNet-cross-chem-earlystop-v6; do
     WORKSPACE_PARENTS+=("$REPOSITORY_PARENT/$TREE/workspaces")
   done
 done
-PROTECTED=("$PREVIOUS" "$EXISTING")
+PROTECTED=("$SOURCE_ANCHOR" "$EXISTING")
 for PARENT in "${WORKSPACE_PARENTS[@]}"; do
   for NAME in "${KNOWN_QUEUES[@]}"; do
     FOLDER="$PARENT/$NAME"
-    if [[ "$NAME" != cross_chem_earlystop_v6 || "$FOLDER" != "$WORKSPACE" ]]; then
+    if [[ "$FOLDER" != "$WORKSPACE" || ( "$NAME" != cross_chem_earlystop_v6 && "$NAME" != cross_chem_earlystop_v6_v2 ) ]]; then
       PROTECTED+=("$FOLDER")
     fi
   done
 done
-"$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; new=Path(sys.argv[1]); old=[Path(p).resolve() for p in sys.argv[2:]]; assert all(new!=p and not new.is_relative_to(p) and not p.is_relative_to(new) for p in old), "新工作区必须独立于v3、来源缓存及已知旧实验目录"' "$WORKSPACE" "${PROTECTED[@]}"
-ARGS=(-u -B scripts/run_cross_chem_earlystop_v6.py --previous-workspace "$PREVIOUS" \
+"$PYTHON_BIN" -B -c 'from pathlib import Path; import sys; new=Path(sys.argv[1]); old=[Path(p).resolve() for p in sys.argv[2:]]; assert all(new!=p and not new.is_relative_to(p) and not p.is_relative_to(new) for p in old), "新工作区必须独立于来源缓存及已知旧实验目录"' "$WORKSPACE" "${PROTECTED[@]}"
+ARGS=(-u -B scripts/run_cross_chem_earlystop_v6.py "${SOURCE_ARGS[@]}" \
       --workspace "$WORKSPACE" --device "$DEVICE" "${EXTRA[@]}")
-if [[ "$MODE" == report ]]; then
-  exec "$PYTHON_BIN" "${ARGS[@]}"
-fi
 
 command -v flock >/dev/null || { echo '启动需要flock。' >&2; exit 1; }
 mkdir -p -- "$WORKSPACE/logs"
@@ -131,7 +171,10 @@ if ! kill -0 "$PID" 2>/dev/null; then
   exit "$EXIT_CODE"
 fi
 printf 'v6后台进程：%s\n日志：%s\n' "$PID" "$LOG"
-printf 'v3只读来源：%s\n新结果目录：%s\n' "$PREVIOUS" "$WORKSPACE"
+printf '只读来源（%s）：%s\n新结果目录：%s\n' "$SOURCE_MODE" "$SOURCE_ANCHOR" "$WORKSPACE"
+if [[ "$SOURCE_MODE" == v2 ]]; then
+  printf '本轮显式固定学习率：%s；不是v3实际选值。\n' "$LEARNING_RATE"
+fi
 echo '已进入conda环境batlinet，OMP/MKL线程数均为8；无需在外层再加nohup。'
 echo '每10次更新评估，连续5次未严格改善停止；最早100次、最多1000次更新。'
 echo '344次全新训练：单电池方法按训练误差停滞停止，组合按留出电池对关系误差早停。'

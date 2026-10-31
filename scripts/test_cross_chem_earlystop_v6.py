@@ -51,7 +51,8 @@ class TenStepMonitoringTests(unittest.TestCase):
         config = suite.read_config()
         self.assertEqual(config, expected)
         self.assertIs(suite.early, early)
-        self.assertIs(suite.inputs, inputs)
+        self.assertIs(suite.inputs.legacy, inputs)
+        self.assertIs(suite.prepare_inputs, inputs.prepare_inputs)
         kwargs = suite._kwargs(config, .0003)
         self.assertEqual(kwargs['settings'], dict(max_steps=1000, min_stop=100,
                                                 validate_every=10, patience=5))
@@ -179,6 +180,8 @@ class TenStepMonitoringTests(unittest.TestCase):
         hashes = suite.code_hashes()
         for relative in ('scripts/run_cross_chem_earlystop_v6.py',
                          'configs/cross_chem_earlystop_v6/protocol.yaml',
+                         'configs/cross_chem_earlystop_v6/from_v2.yaml',
+                         'scripts/cross_chem_earlystop_v6_data.py',
                          'scripts/cross_chem_earlystop_v5_training.py',
                          'scripts/cross_chem_earlystop_v5_data.py'):
             self.assertIn(relative, hashes)

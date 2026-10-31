@@ -1,0 +1,38 @@
+schema: 6
+experiment: cross_chem_earlystop_v6
+models: [direct, finetune, combination]
+seeds: [0, 1, 2, 3, 4, 5, 6, 7]
+label: ln_cycles_divided_by_fixed_1000
+learning_rate: explicit_fixed_value_without_v3_selection
+data:
+  source_count: 275
+  reuse_actual_saved_ids: true
+  reuse_saved_pair_split: true
+  pair_index_convention: source_major_target_interleaved
+  combination_training_pairs: saved_80_percent
+  combination_validation_pairs: saved_20_percent
+  test_reference_count: 275
+early_stopping:
+  max_steps: 1000
+  min_stop: 100
+  validate_every: 10
+  patience: 5
+monitoring:
+  pretrain: training_cell_log_mse
+  direct: training_cell_log_mse
+  finetune: training_cell_log_mse
+  combination: heldout_pair_relation_log_mse
+training:
+  optimizer: AdamW
+  weight_decay: 0.01
+  logical_batch: 128
+  micro_batch: 8
+  inference_chunk: 8
+  checkpoint_every: 25
+  report_every: 25
+  precision: float32
+  shuffle: false
+  final_weight: first_strictly_lowest_monitor_log_mse
+  expected_formal_training: 344
+  expected_formal_predictions: 336
+  test_after_all_formal_training: true

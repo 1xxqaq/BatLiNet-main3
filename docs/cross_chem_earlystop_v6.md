@@ -8,7 +8,7 @@
 
 ## 训练、监控与测试
 
-继续复用v3实际保存的112份目标训练、测试名单、已选学习率，以及底层实际80%训练对和20%验证对。275块LFP全部保留，无32次开发实验，无40块LFP留出。数据和训练模块复用v5实现；全部8次来源预训练与112个目标场景×3种方法重新训练，共344次，完成并核验后统一计算336份测试预测。
+支持两种只读来源：有v3材料时，复用其已保存的实际名单与已选学习率；本机只有v2时，直接复用v2缓存、112份实际目标训练／测试名单和80%训练对／20%验证对，并显式固定学习率。后者不要求另一台服务器上的v3，不重跑开发，也不伪造v3选择文件。275块LFP全部保留，无32次开发实验，无40块LFP留出。数据审计和训练引擎复用v5实现；全部8次来源预训练与112个目标场景×3种方法重新训练，共344次，完成并核验后统一计算336份测试预测。
 
 | 阶段 | 每10次更新监控的误差 |
 | --- | --- |
@@ -21,9 +21,38 @@
 
 v6使用独立代码入口与结果目录，不加载旧v5权重或进度，不将两种评估间隔的结果混合恢复。其余实验设定和解释边界见[v5说明](cross_chem_earlystop_v5.md)。
 
+## 当前服务器只有v2时
+
+已确认当前服务器有`cross_chem_two_models_v2`，但没有`cross_chem_matched_v3`。使用新增的`--existing-workspace`模式直接导入v2；不需要先执行v3。导入仍严格核验实际缓存、403块电池、112份协议及文件指纹，缺失或变化时停止，不重新抽取名单。
+
+本轮保留当前服务器v2实际保存的划分，三种方法共享同一本机名单。由于缺少另一台服务器的v3收据，不声称已经核验两台服务器之间的名单完全一致。
+
+本轮已明确选择固定学习率`0.001`。这沿用旧v2的固定值，但没有证据证明它是另一台服务器上v3实际选中的值；记录中将明确标注为本轮显式固定学习率。`--learning-rate`在该模式下必须显式给出，三种方法及来源预训练共用此值。`--previous-workspace`与`--existing-workspace`互斥；v3模式不允许覆盖其已选学习率。
+
+当前v6工作树已经创建，且此前在来源检查处退出、没有开始训练，因此更新此工作树即可，不要再次执行`git worktree add`。将`<本次提交>`替换为本次交付值：
+
+```bash
+cd /root/autodl-tmp/BatLiNet-cross-chem-earlystop-v6
+git fetch origin agent/cycle-mixer-latent-cross-attention
+git checkout --detach <本次提交>
+bash scripts/start_cross_chem_earlystop_v6_nohup.sh \
+  --existing-workspace /root/autodl-tmp/BatLiNet-cycle-mixer/workspaces/cross_chem_two_models_v2 \
+  --learning-rate 0.001
+```
+
+该模式默认输出为`workspaces/cross_chem_earlystop_v6_v2`，与依赖v3的旧v6结果目录分开。执行前仍检查其他已知队列的锁，不停止旧进程。
+
+```bash
+tail -f "$(cat workspaces/cross_chem_earlystop_v6_v2/latest_log.txt)"
+bash scripts/start_cross_chem_earlystop_v6_nohup.sh \
+  --workspace workspaces/cross_chem_earlystop_v6_v2 --report
+```
+
+报告从指定结果目录读取保存的来源身份，不再预先检查默认v3目录。中断后用相同的`--existing-workspace`和`--learning-rate 0.001`启动命令恢复。两种来源模式、学习率或已保存名单不允许混合恢复。
+
 ## 部署、运行与恢复
 
-服务器首次使用独立工作树部署。将`<本次分支>`和`<本次提交>`替换为实际交付值：
+如果服务器有完整v3材料，首次可按原方式使用独立工作树部署。将`<本次分支>`和`<本次提交>`替换为实际交付值：
 
 ```bash
 cd /root/autodl-tmp/BatLiNet-cycle-mixer
@@ -34,7 +63,7 @@ bash scripts/start_cross_chem_earlystop_v6_nohup.sh \
   --previous-workspace /root/autodl-tmp/BatLiNet-cycle-mixer/workspaces/cross_chem_matched_v3
 ```
 
-启动脚本内部使用`nohup`，自动进入`batlinet`环境，设置`OMP_NUM_THREADS=8`与`MKL_NUM_THREADS=8`。默认结果目录为新工作树内的`workspaces/cross_chem_earlystop_v6`。旧工作树、v5代码、配置和结果保持原样。
+启动脚本内部使用`nohup`，自动进入`batlinet`环境，设置`OMP_NUM_THREADS=8`与`MKL_NUM_THREADS=8`。v3模式默认结果目录为新工作树内的`workspaces/cross_chem_earlystop_v6`；v2模式为`workspaces/cross_chem_earlystop_v6_v2`。旧工作树、v5代码、配置和结果保持原样。
 
 ```bash
 tail -f "$(cat workspaces/cross_chem_earlystop_v6/latest_log.txt)"

@@ -16,12 +16,13 @@ from scripts import run_three_tasks as common
 from scripts import run_cross_chem_matched as matched
 from scripts import cross_chem_matched_training as fixed
 from scripts import cross_chem_matched_data as data
-from scripts import cross_chem_earlystop_v5_data as inputs
+from scripts import cross_chem_earlystop_v6_data as inputs
 from scripts import cross_chem_earlystop_v5_training as early
 import torch
 import yaml
 
 CONFIG = ROOT / 'configs/cross_chem_earlystop_v6/protocol.yaml'
+V2_CONFIG = ROOT / 'configs/cross_chem_earlystop_v6/from_v2.yaml'
 KINDS = matched.KINDS
 prepare_inputs = inputs.prepare_inputs
 
@@ -29,7 +30,7 @@ prepare_inputs = inputs.prepare_inputs
 def protected_folders(previous_workspace, old_data, workspace):
     # Preserve all older queues, including a live v5 in its separate worktree.
     previous_workspace, workspace = Path(previous_workspace).resolve(), Path(workspace).resolve()
-    names = (*inputs.KNOWN_QUEUES, 'cross_chem_earlystop_v6')
+    names = (*inputs.KNOWN_QUEUES, 'cross_chem_earlystop_v6', 'cross_chem_earlystop_v6_v2')
     trees = (*inputs.KNOWN_WORKTREES, 'BatLiNet-cross-chem-earlystop-v6')
     parents = {ROOT / 'workspaces', previous_workspace.parent}
     for parent in {ROOT.parent, previous_workspace.parent.parent.parent}:
@@ -38,16 +39,20 @@ def protected_folders(previous_workspace, old_data, workspace):
     for parent in sorted(parents):
         for name in names:
             path = (parent / name).resolve()
-            if name != 'cross_chem_earlystop_v6' or path != workspace:
+            if name not in ('cross_chem_earlystop_v6', 'cross_chem_earlystop_v6_v2') or path != workspace:
                 folders.append(path)
     return list(dict.fromkeys(path.resolve() for path in folders))
 
 
-def read_config():
-    cfg = yaml.safe_load(CONFIG.read_text(encoding='utf-8'))
+def read_config(input_mode=inputs.V3_MODE):
+    if input_mode not in (inputs.V3_MODE, inputs.V2_MODE):
+        raise ValueError('未知的数据和学习率来源模式。')
+    path = V2_CONFIG if input_mode == inputs.V2_MODE else CONFIG
+    cfg = yaml.safe_load(path.read_text(encoding='utf-8'))
     expected = dict(schema=6, experiment='cross_chem_earlystop_v6', models=list(KINDS),
         seeds=list(range(8)), label='ln_cycles_divided_by_fixed_1000',
-        learning_rate='reuse_previous_source_selected_value',
+        learning_rate=(inputs.FIXED_RATE_SOURCE if input_mode == inputs.V2_MODE
+                       else 'reuse_previous_source_selected_value'),
         data=dict(source_count=275, reuse_actual_saved_ids=True, reuse_saved_pair_split=True,
             pair_index_convention=inputs.PAIR_CONVENTION, combination_training_pairs='saved_80_percent',
             combination_validation_pairs='saved_20_percent', test_reference_count=275),
@@ -60,6 +65,28 @@ def read_config():
     if cfg != expected:
         raise ValueError('v6配置与约定不同，不能混合修改恢复。')
     return cfg
+
+
+def resolve_source(args, parser):
+    """Resolve the explicit source route before opening any new output files."""
+    if args.existing_workspace is not None:
+        if args.previous_workspace is not None:
+            parser.error('--existing-workspace与--previous-workspace不能同时指定。')
+        try:
+            rate = inputs.fixed_rate(args.learning_rate)
+        except ValueError as error:
+            parser.error(str(error))
+        existing = args.existing_workspace.resolve()
+        return dict(input_mode=inputs.V2_MODE, source_workspace=existing, old_data=existing,
+            workspace=(args.workspace or ROOT / 'workspaces/cross_chem_earlystop_v6_v2').resolve(),
+            learning_rate=rate)
+    if args.learning_rate is not None:
+        parser.error('--learning-rate仅用于--existing-workspace模式；不能覆盖v3已保存的选择。')
+    previous = (args.previous_workspace or ROOT / 'workspaces/cross_chem_matched_v3').resolve()
+    old = Path(inputs.read_json(previous / 'queue.json')['existing_workspace']).resolve()
+    return dict(input_mode=inputs.V3_MODE, source_workspace=previous, old_data=old,
+        workspace=(args.workspace or ROOT / 'workspaces/cross_chem_earlystop_v6').resolve(),
+        learning_rate=None)
 
 
 def formal_plan():
@@ -108,7 +135,8 @@ def _kwargs(cfg, learning_rate):
 
 
 def code_hashes():
-    paths = [Path(__file__), CONFIG, ROOT / 'scripts/cross_chem_earlystop_v5_data.py',
+    paths = [Path(__file__), CONFIG, V2_CONFIG, ROOT / 'scripts/cross_chem_earlystop_v6_data.py',
+        ROOT / 'scripts/cross_chem_earlystop_v5_data.py',
         ROOT / 'scripts/cross_chem_earlystop_v5_training.py', ROOT / 'scripts/cross_chem_matched_data.py',
         ROOT / 'scripts/cross_chem_matched_training.py', ROOT / 'scripts/run_cross_chem_matched.py',
         ROOT / 'scripts/run_three_tasks.py', ROOT / 'configs/cross_chem_matched_v3/protocol.yaml',
@@ -213,7 +241,8 @@ def report(workspace):
         print('v6尚未开始。')
         return
     identity = inputs.read_json(workspace / 'queue.json')
-    if identity.get('schema') != 6 or identity.get('config') != read_config():
+    mode = identity.get('source_receipt', {}).get('input_mode', inputs.V3_MODE)
+    if identity.get('schema') != 6 or identity.get('config') != read_config(mode):
         raise ValueError('v6报告只接受每10次评估的本版队列，不能混用旧版结果。')
     receipt = identity['source_receipt']
     protocols = load_protocols(workspace, receipt)
@@ -225,6 +254,8 @@ def report(workspace):
             rows.append(training_row(workspace, job, state))
     summary = training_summary(rows)
     print(f'v6完成训练{len(rows)}/344；学习率{receipt["learning_rate"]:g}；无新增开发阶段。')
+    if mode == inputs.V2_MODE:
+        print('数据来自已有v2；学习率由本轮显式固定，不是v3开发选择值。')
     print('单电池方法按训练误差停滞停止；组合按留出电池对的关系误差停止。')
     for group in summary['groups']:
         name = 'LFP预训练' if group['kind'] == 'pretrain' else matched.LABELS[group['kind']]
@@ -245,18 +276,24 @@ def report(workspace):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--previous-workspace', type=Path, default=ROOT / 'workspaces/cross_chem_matched_v3')
-    parser.add_argument('--workspace', type=Path, default=ROOT / 'workspaces/cross_chem_earlystop_v6')
+    source_group = parser.add_mutually_exclusive_group()
+    source_group.add_argument('--previous-workspace', type=Path, help='复用v3实际名单和已选学习率')
+    source_group.add_argument('--existing-workspace', type=Path, help='直接复用已有v2缓存和实际电池对')
+    parser.add_argument('--learning-rate', type=float, help='v2模式必须显式指定的固定学习率')
+    parser.add_argument('--workspace', type=Path)
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--prepare-only', action='store_true')
     parser.add_argument('--report', action='store_true')
     args = parser.parse_args()
-    workspace, previous_workspace = args.workspace.resolve(), args.previous_workspace.resolve()
     if args.report:
+        default = 'cross_chem_earlystop_v6_v2' if args.existing_workspace else 'cross_chem_earlystop_v6'
+        workspace = (args.workspace or ROOT / 'workspaces' / default).resolve()
         report(workspace)
         return
-    cfg = read_config()
-    old_data = Path(inputs.read_json(previous_workspace / 'queue.json')['existing_workspace']).resolve()
+    source_route = resolve_source(args, parser)
+    workspace, previous_workspace = source_route['workspace'], source_route['source_workspace']
+    cfg = read_config(source_route['input_mode'])
+    old_data = source_route['old_data']
     protected = protected_folders(previous_workspace, old_data, workspace)
     inputs.separate_output(workspace, *protected)
     if os.name != 'posix' or not args.device.startswith('cuda') or not torch.cuda.is_available():
@@ -270,8 +307,13 @@ def main():
             if folder in (previous_workspace, old_data) or (folder / '.queue.lock').is_file():
                 stack.enter_context(matched.legacy_read_lock(folder))
         try:
-            manifest, protocols, receipt = prepare_inputs(previous_workspace, workspace)
+            if source_route['input_mode'] == inputs.V2_MODE:
+                manifest, protocols, receipt = inputs.prepare_existing(previous_workspace, workspace,
+                                                                       source_route['learning_rate'])
+            else:
+                manifest, protocols, receipt = prepare_inputs(previous_workspace, workspace)
             identity = dict(schema=6, config=cfg, source_receipt=receipt, jobs=jobs,
+                input_mode=source_route['input_mode'],
                 formal_training_runs=344, formal_predictions=336, development_runs=0,
                 lfp_validation_holdout=0, reuse_previous_weights=False,
                 code_hashes=code_hashes(), runtime=common.runtime(args.device),
